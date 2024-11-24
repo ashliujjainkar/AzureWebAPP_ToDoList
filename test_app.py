@@ -28,6 +28,11 @@ def test_list_task():
         assert "task" in response_data[0]
         assert "completed" in response_data[0]
 
+def test_homepage():
+    response = requests.get(base_url)
+    assert response.status_code == 200 , "Home page not loaded"
+    assert response.text == "Hello! Welcome to Todo List App" , "Unexpected response message"
+
 def test_dump_task():
     url = f"{base_url}/dump"
 

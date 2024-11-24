@@ -24,6 +24,11 @@ def task_serializer(task):
 def get_version():
     return jsonify({"version": api_version})
 
+@app.route('/', methods=['GET'])
+def get_home():
+    return "Hello! This is Todolist app"
+
+
 @app.route('/list',methods = ['GET'])
 def list_tasks():
     return jsonify([task_serializer(task) for task in tasks.values()])

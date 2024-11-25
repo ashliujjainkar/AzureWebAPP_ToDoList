@@ -1,21 +1,27 @@
-from flask import Flask,request, jsonify
+from flask import Flask, request, jsonify
+from todolist import ToDoList
+from pymongo import MongoClient
+from bson import ObjectId
 import os
+
 
 app = Flask(__name__)
 
-version_file_path = os.path.join(os.getcwd(), 'version.txt')
+version_file_path = os.path.join(os.getcwd(), "version.txt")
 api_version = "0.0"
 if os.path.exists(version_file_path):
-    with open(version_file_path, 'r') as f:
+    with open(version_file_path, "r") as f:
         api_version = f.read()
 print("API Version:", api_version)
 
-tasks = {}
-task_counter = 1
+cosmosdb_uri = os.environ.get('COSMOSDB_URI')
+client = MongoClient(cosmosdb_uri)
+db = client['tododb']
+tasks_collection = db['tasks']
 
 def task_serializer(task):
-    return{
-        'id': task['id'],
+    return {
+        'id': str(task['id']),  
         'task': task['task'],
         'completed': task['completed']
     }
@@ -28,43 +34,47 @@ def get_version():
 def get_home():
     return "Hello! Welcome to Todo List App"
 
-
-@app.route('/list',methods = ['GET'])
+@app.route('/list', methods=['GET'])
 def list_tasks():
-    return jsonify([task_serializer(task) for task in tasks.values()])
+    tasks = list(tasks_collection.find({}))
+    return jsonify([task_serializer(task) for task in tasks])
 
-@app.route('/add',methods = ['POST'])
+@app.route('/add', methods=['POST'])
 def add_task():
-    global task_counter
     new_task = request.json.get('task')
+    # print("New task:",new_task, flush=True)
     if new_task:
-        task = {'id': task_counter,'task': new_task, 'completed': False}
-        tasks[task_counter] = task
-        task_counter += 1
+        task_id = tasks_collection.count_documents({})+1
+        task = {'id':task_id, 'task': new_task, 'completed': False} 
+        tasks_collection.insert_one(task)
+        # print("Task ID:",task['id'], flush=True) 
         return jsonify(task_serializer(task)), 201
-    return jsonify({"error":"No task Provided"}), 400
+    return jsonify({"error": "No task provided"}), 400
 
 @app.route('/complete', methods=['POST'])
 def complete_task():
     task_id = request.json.get('id')
-    task = tasks.get(task_id)
+    task = tasks_collection.find_one({"id": task_id})  
     if task:
+        tasks_collection.update_one({"id": task_id}, {"$set": {"completed": True}})
         task['completed'] = True
         return jsonify(task_serializer(task))
-    return jsonify({"error":"Task not Found"}),404
+    return jsonify({"error": "Task not found"}), 404
 
-@app.route('/incomplete',methods=['POST'])
-def incomplete():
+@app.route('/incomplete', methods=['POST'])
+def incomplete_task():
     task_id = request.json.get('id')
-    task = tasks.get(task_id)
+    task = tasks_collection.find_one({"id": task_id})  
     if task:
+        tasks_collection.update_one({"id": task_id}, {"$set": {"completed": False}})
         task['completed'] = False
         return jsonify(task_serializer(task))
-    return jsonify({"error":"Task not Found"}),404
+    return jsonify({"error": "Task not found"}), 404
 
 @app.route('/dump', methods=['GET'])
 def dump():
-    return jsonify({"message":f"{len(tasks)} tasks stored in memory"})
+    tasks = list(tasks_collection.find({}, {'_id': 0}))
+    return jsonify({"message": f"{len(tasks)} tasks stored in Cosmos DB"})
 
 if __name__ == '__main__':
-    app.run(host = '0.0.0.0',port=8888)
+    app.run(host='0.0.0.0', port=8888)

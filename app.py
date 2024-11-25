@@ -14,7 +14,7 @@ if os.path.exists(version_file_path):
         api_version = f.read()
 print("API Version:", api_version)
 
-cosmosdb_uri = "mongodb://todolist-db:vBpRs5WlagtrFFX1uJJuDkdFpuCzxedYLSrTig5h1mgPYiSOqL0mIP5RejbWxnipmyP2QG4Ah4jKACDbJodheg==@todolist-db.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@todolist-db@"
+cosmosdb_uri = os.environ.get('COSMOSDB_URI')
 client = MongoClient(cosmosdb_uri)
 db = client['tododb']
 tasks_collection = db['tasks']

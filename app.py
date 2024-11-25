@@ -32,7 +32,7 @@ def get_version():
 
 @app.route('/', methods=['GET'])
 def get_home():
-    return "Hello! Welcome to Todo List App"
+    return f"Hello! Welcome to Todo List App {cosmosdb_uri}"
 
 @app.route('/list', methods=['GET'])
 def list_tasks():
